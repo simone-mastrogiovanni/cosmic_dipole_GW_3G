@@ -1,6 +1,6 @@
 # Detection and estimation of the cosmic dipole with the Einstein Telescope and Cosmic Explorer
 
-This repository hosts some of the tools used to study the detectability of the cosmic dipole using GW number counts. If you use the following code, please cite
+This repository hosts some of the tools used to study the detectability of the cosmic dipole using GW number counts. If you use the following code, please cite [this paper](https://arxiv.org/abs/2209.11658).
 
 ```
 @ARTICLE{2022arXiv220911658M,
