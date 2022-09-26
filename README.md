@@ -3,7 +3,22 @@
 This repository hosts some of the tools used to study the detectability of the cosmic dipole using GW number counts. If you use the following code, please cite
 
 ```
-Inser here bibtex for citation
+@ARTICLE{2022arXiv220911658M,
+       author = {{Mastrogiovanni}, S. and {Bonvin}, C. and {Cusin}, G. and {Foffa}, S.},
+        title = "{Detection and estimation of the cosmic dipole with the Einstein Telescope and Cosmic Explorer}",
+      journal = {arXiv},
+     keywords = {Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2022,
+        month = sep,
+          eid = {arXiv:2209.11658},
+        pages = {arXiv:2209.11658},
+archivePrefix = {arXiv},
+       eprint = {2209.11658},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2022arXiv220911658M},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
 ```
 
 ## Installing
