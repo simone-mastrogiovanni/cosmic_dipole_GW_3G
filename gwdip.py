@@ -164,7 +164,7 @@ def caluclate_detected_binaries(binaries_dict,interp,num_detectors,dipole_magnit
     distance*=(1-dipole_magnitude*dipole_projection)
     Q=0.2*(np.power(0.5*(1+binaries_dict['cosiota']**2.),2.)+binaries_dict['cosiota']**2)
     
-    binaries_dict['snr']=(np.power(constants.G.value*chirp_mass,5./3)*Q)/(6*np.power(constants.c.value,3.)*np.power(np.pi,4/3.)*np.power(distance,2.))
+    binaries_dict['snr']=(5*np.power(constants.G.value*chirp_mass,5./3)*Q)/(6*np.power(constants.c.value,3.)*np.power(np.pi,4/3.)*np.power(distance,2.))
     if binary_type=='BNS':
         binaries_dict['snr']*=interp(lso)
     elif binary_type=='BBH':
