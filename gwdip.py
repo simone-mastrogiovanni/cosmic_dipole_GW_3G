@@ -151,17 +151,21 @@ def caluclate_detected_binaries(binaries_dict,interp,num_detectors,dipole_magnit
     binaries_dict['phi'][idx],binaries_dict['theta'][idx]= binaries_dict['phi'][idx]+np.pi,binaries_dict['theta'][idx]-binaries_dict['aberration'][idx]
     
     
+    # Modifies masses and distance according to dipole
+    binaries_dict['mass1'], binaries_dict['mass2'] = binaries_dict['mass1']*(1-dipole_magnitude*dipole_projection), binaries_dict['mass2']*(1-dipole_magnitude*dipole_projection)
+    binaries_dict['dl']*=(1-dipole_magnitude*dipole_projection)
+    
     chirp_mass=np.power(binaries_dict['mass1']*binaries_dict['mass2'],3/5.)/np.power(binaries_dict['mass1']+binaries_dict['mass2'],1/5.)
     chirp_mass*=1.99e30
-    chirp_mass*=(1-dipole_magnitude*dipole_projection)
+    #chirp_mass*=(1-dipole_magnitude*dipole_projection)
     
     Mtot=binaries_dict['mass1']+binaries_dict['mass2']
     Mtot*=4.9e-6
-    Mtot*=(1-dipole_magnitude*dipole_projection)
+    #Mtot*=(1-dipole_magnitude*dipole_projection)
     lso=1./(Mtot*np.pi*6**1.5)
     
     distance=binaries_dict['dl']*3.08e22
-    distance*=(1-dipole_magnitude*dipole_projection)
+    #distance*=(1-dipole_magnitude*dipole_projection)
     Q=0.2*(np.power(0.5*(1+binaries_dict['cosiota']**2.),2.)+binaries_dict['cosiota']**2)
     
     binaries_dict['snr']=(np.power(constants.G.value*chirp_mass,5./3)*Q)/(6*np.power(constants.c.value,3.)*np.power(np.pi,4/3.)*np.power(distance,2.))
@@ -210,7 +214,7 @@ def loop_detections(zp,mp,Nsamp,Ndet,interp,num_detectors,dipole_magnitude,snr_t
         pbar.update(len(bin_det_sup['snr']))
     return bin_det,Ngen
 
-def find_quantity_histo(phi,theta,nside):
+def find_quantity_histo(phi,theta,nside,var=None):
     '''
     Helper function to find the histogram of a sky distribution
     
@@ -220,6 +224,8 @@ def find_quantity_histo(phi,theta,nside):
         Angles in spherical coordinates. Phi in 0, 2pi, theta in 0 pi.
     nside: int
         Nside for the Healpy pixelization
+    var: array
+        If passed, the function will compute the mean of the variable in each sky direction
     
     Returns
     -------
@@ -234,7 +240,11 @@ def find_quantity_histo(phi,theta,nside):
         ind=np.where(indices==indx)[0]
         if ind.size==0:
             continue
-        mth_map[indx] = len(ind)
+            
+        if var is None:
+            mth_map[indx] = len(ind)
+        else:
+            mth_map[indx] = np.mean(var[ind]) # Mean in the pixel
     # This is either a np or cp array
     mth_map[np.isnan(mth_map)]=hp.UNSEEN
     return hp.ma(mth_map)
@@ -260,7 +270,7 @@ def indices2radec(indices,nside):
     return phi, np.pi/2.0-theta
 
 
-def vc_estimator_map(phi,theta,nsidegw,nsidedip,hh=None,shuffle=False):
+def vc_estimator_map(phi,theta,nsidegw,nsidedip,hh=None,shuffle=False,var=None):
     '''
     Calculates sky map the dipole estimator given a list of GW detections.
     
@@ -276,6 +286,8 @@ def vc_estimator_map(phi,theta,nsidegw,nsidedip,hh=None,shuffle=False):
         Histogram of the GW detections in the sky, this will save some computing time
     Shuffle: bool
         If true, shuffle the GW detections sky position. Used to remove the effect of dipole.
+    var: array
+        If passed, the function will compute the mean of the variable in each sky direction
     
     Returns
     -------
@@ -284,7 +296,7 @@ def vc_estimator_map(phi,theta,nsidegw,nsidedip,hh=None,shuffle=False):
     '''
     npixels=hp.nside2npix(nsidedip)
     if hh is None:
-        hh=find_quantity_histo(phi,theta,nsidegw)
+        hh=find_quantity_histo(phi,theta,nsidegw,var=var)
     if shuffle:
         hh=np.random.permutation(hh)
         
@@ -295,12 +307,16 @@ def vc_estimator_map(phi,theta,nsidegw,nsidedip,hh=None,shuffle=False):
         theta_dipole,phi_dipole= hp.pix2ang(nsidedip,i)
         n_dipole=np.array([np.sin(theta_dipole)*np.cos(phi_dipole),np.sin(theta_dipole)*np.sin(phi_dipole),np.cos(theta_dipole)])
         dipole_projection=np.dot(n_dipole,n_gw)
-        vc_map[i]=np.sum(hh*dipole_projection*1.5)/np.sum(hh)
-    
+        
+        if var is None:
+            vc_map[i]=np.sum(hh*dipole_projection*1.5)/np.sum(hh)
+        else:
+            vc_map[i]=3*np.mean(hh*dipole_projection) # Mean over sky patches
+        
     theta_map,phi_map=hp.pix2ang(nsidedip,np.arange(0,npixels,1))
     return vc_map,theta_map,phi_map,hh
 
-def vc_estimator(phi,theta,phi_dipole,theta_dipole,nsidegw,hh=None,shuffle=False):
+def vc_estimator(phi,theta,phi_dipole,theta_dipole,nsidegw,hh=None,shuffle=False,var=None):
     '''
     Calculates the dipole estimator given a list of GW detections.
     
@@ -314,6 +330,9 @@ def vc_estimator(phi,theta,phi_dipole,theta_dipole,nsidegw,hh=None,shuffle=False
         Histogram of the GW detections in the sky, this will save some computing time
     Shuffle: bool
         If true, shuffle the GW detections sky position. Used to remove the effect of dipole.
+     var: array
+        If passed, the function will compute the mean of the variable in each sky direction
+    
     
     Returns
     -------
@@ -321,15 +340,21 @@ def vc_estimator(phi,theta,phi_dipole,theta_dipole,nsidegw,hh=None,shuffle=False
     '''
     
     if hh is None:
-        hh=find_quantity_histo(phi,theta,nsidegw)
+        hh=find_quantity_histo(phi,theta,nsidegw,var=var)
     if shuffle:
         hh=np.random.permutation(hh)
     
     theta_pix,phi_pix = hp.pix2ang(nsidegw,np.arange(0,len(hh),1))
     n_gw=np.array([np.sin(theta_pix)*np.cos(phi_pix),np.sin(theta_pix)*np.sin(phi_pix),np.cos(theta_pix)])
     n_dipole=np.array([np.sin(theta_dipole)*np.cos(phi_dipole),np.sin(theta_dipole)*np.sin(phi_dipole),np.cos(theta_dipole)])
-    dipole_projection=np.dot(n_dipole,n_gw)
-    return np.sum(hh*dipole_projection*1.5)/np.sum(hh),hh
+    dipole_projection=np.dot(n_dipole.T,n_gw)
+    
+    if var is None:
+        out= np.sum(hh*dipole_projection*1.5)/np.sum(hh)
+    else:
+        out= 3*np.mean(hh*dipole_projection)
+    
+    return out,hh
 
 class hierarchical_likelihood(bilby.Likelihood):
     '''
